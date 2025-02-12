@@ -1,0 +1,8 @@
+name: tellurium_env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - pip>=24
+  - python=3.12
+  - python-build=1.2.2.post1

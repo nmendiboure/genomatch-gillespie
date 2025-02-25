@@ -1,4 +1,4 @@
-model = """
+my_model = """
 model rad51_recombination()
       // Parameters
       N       = 230;        // Number of free binding sites

@@ -1,96 +1,53 @@
 import tellurium as te
 import numpy as np
+from numpy import random
 import matplotlib.pyplot as plt
 from model import my_model # This module contains the 'model' string with your Antimony model
 
 
-def resection(self, timepoints: int, tot_time_h: int, exo1_speed_bph: int) -> int:
-    """
-    Simulate the resection process of the filament using a normal distribution.
-    """
-    # 1. Calculate 1 hour in timepoints
-    # 2. Calculate the speed of the Exo1 enzyme in timepoints
-    # 3. Calculate the timepoints needed for the resection process of the filament
-    # 4. Simulate the end of the resection process using a normal distribution, with
-    #   sigma being 1/4 h for the DSB induction.
-    one_hour_timepoints = timepoints / tot_time_h
-    exo1_speed_timepoints = exo1_speed_bph / one_hour_timepoints
-    resection_timepoints = int(self.size / exo1_speed_timepoints)
-
-    mu = resection_timepoints
-    sigma = 1 / 4 * one_hour_timepoints
-    resection_end = abs(int(np.random.normal(mu, sigma)))
-    if resection_end > timepoints:
-        resection_end = timepoints
-    return resection_end
-
-
-def make_group(result_array: np.ndarray) -> dict:
+def make_group(result: np.ndarray) -> dict:
     """
     Group the results of the simulation into different categories.
     """
-    # Extract time
-    time = result_array[:, 0]
+    
+    homo_8_9 = result[:, 2] + result[:, 3]
+    homo_12_15 = result[:, 4] + result[:, 5]
+    homo_24_48 = result[:, 6] + result[:, 7]
+    homo_96_384 = result[:, 8] + result[:, 9] + result[:, 10],
+    hetero_8_9 = result[:, 11] + result[:, 12]
+    hetero_12_15 = result[:, 13] + result[:, 14]
+    hetero_24_48 = result[:, 15] + result[:, 16]
+    hetero_96_384 = result[:, 17] + result[:, 18] + result[:, 19]
+    all_9_8 = hetero_8_9 + homo_8_9
+    all_12_15 = hetero_12_15 + homo_12_15
+    all_24_48 = hetero_24_48 + homo_24_48
+    all_96_384 = hetero_96_384 + homo_96_384
+    hetero_dloop = result[:, 20]
+    homo_dloop = result[:, 21]
+    recombined = result[:, 22]
+    occupied = all_9_8 + all_12_15 + all_24_48 + all_96_384 + hetero_dloop + homo_dloop + recombined
 
-    # Free binding sites
-    S = result_array[:, 1]
-
-    # Homologous complexes
-    HM8 = result_array[:, 2]
-    HM9 = result_array[:, 3]
-    HM12 = result_array[:, 4]
-    HM15 = result_array[:, 5]
-    HM24 = result_array[:, 6]
-    HM48 = result_array[:, 7]
-    HM96 = result_array[:, 8]
-    HM192 = result_array[:, 9]
-    HM384 = result_array[:, 10]
-
-    # Heterologous complexes
-    HT8 = result_array[:, 11]
-    HT9 = result_array[:, 12]
-    HT12 = result_array[:, 13]
-    HT15 = result_array[:, 14]
-    HT24 = result_array[:, 15]
-    HT48 = result_array[:, 16]
-    HT96 = result_array[:, 17]
-    HT192 = result_array[:, 18]
-    HT384 = result_array[:, 19]
-
-    # D-loops and recombined state
-    DHM = result_array[:, 20]
-    DHT = result_array[:, 21]
-    R = result_array[:, 22]
-
-    # Grouped complexes
-    HM_8_9 = HM8 + HM9
-    HM_12_24 = HM12 + HM15 + HM24
-    HM_48_384 = HM48 + HM96 + HM192 + HM384
-
-    HT_8_9 = HT8 + HT9
-    HT_12_24 = HT12 + HT15 + HT24
-    HT_48_384 = HT48 + HT96 + HT192 + HT384
-
-    # Total associations by binding length (F = HM + HT)
-    F_8_9 = HM_8_9 + HT_8_9
-    F_12_24 = HM_12_24 + HT_12_24
-    F_48_384 = HM_48_384 + HT_48_384
 
     res = {
-        "time": time,
-        "S": S,
-        "HM_8_9": HM_8_9,
-        "HM_12_24": HM_12_24,
-        "HM_48_384": HM_48_384,
-        "HT_8_9": HT_8_9,
-        "HT_12_24": HT_12_24,
-        "HT_48_384": HT_48_384,
-        "F_8_9": F_8_9,
-        "F_12_24": F_12_24,
-        "F_48_384": F_48_384,
-        "DHM": DHM,
-        "DHT": DHT,
-        "R": R
+        "time": result[:, 0],
+        "free sites": result[:, 1],
+        "occupied sites": np.sum(result[:, 2:23], axis=1),
+        "homologies 8-9 nts": homo_8_9,
+        "homologies 12-15 nts": homo_24_48,
+        "homologies 24-48 nts": homo_24_48,
+        "homologies 96-384 nts": homo_96_384, 
+        "heterologies 8-9 nts": hetero_8_9,
+        "heterologies 12-15 nts": hetero_12_15,
+        "heterologies 24-48 nts": hetero_24_48,
+        "heterologies 96-384 nts": hetero_96_384,
+        "all": occupied,
+        "all associations 8-9 nts": all_9_8,
+        "all associations 12-15 nts": all_12_15,
+        "all associations 24-48 nts": all_24_48,
+        "all associations 96-384 nts": all_96_384,
+        "D-loop homologies": homo_dloop,
+        "D-loop heterologies": hetero_dloop,
+        "Recombined": recombined
     }
 
     return res
@@ -180,18 +137,35 @@ def plot_trajecotries(res):
 
 if __name__ == "__main__":
     # Load the model from the imported module
+    SEED = 1999
     MODEL = my_model
     r = te.loada(MODEL)
     r.integrator = "gillespie"
-    r.integrator.seed = 1999
+    r.integrator.seed = SEED
+    random.seed(SEED)
 
     # Simulation parameters
     N = 100000  # Final simulation time
-    N_outputs = N // 10  # Number of output time points
+    N_OUTPUTS = N // 10  # Number of output time points
+    N_SIMULATIONS = 100
 
-    # Run the Gillespie stochastic simulation
-    s = r.simulate(0, N, N_outputs)
+    
+    results = []
 
-    group = make_group(s)
-    plot_trajecotries(group)
+    for i in range(N_SIMULATIONS):
+        r.reset()
+
+        t_start = abs(int(random.normal(N // 16, N // 32)))
+        if t_start > N:
+            t_start = N // 16
+
+        s = r.simulate(t_start, N, N_OUTPUTS)
+        results.append(s)
+        print(f"Simulation {i} completed.")
+
+
+
+
+    # group = make_group(s)
+    # plot_trajecotries(group)
 

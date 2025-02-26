@@ -54,6 +54,23 @@ def make_group(result: np.ndarray) -> dict:
     return res
 
 
+def aggregate_groups(groups: list[dict]):
+    n = len(groups)
+    sum_groups: dict = {}
+
+    for i in range(n):
+        group = groups[i]
+        for k, v in group.items():
+            if k not in sum_groups:
+                sum_groups[k] = v
+            else:
+                sum_groups[k] += v
+    
+    agg_groups = {k: v / n for k, v in sum_groups.items()}
+    return agg_groups
+
+
+
 def plot_trajectories(one_res):
     """
     Plot the trajectories of the different molecules in the model.
@@ -136,3 +153,13 @@ def plot_trajectories(one_res):
 
     fig.tight_layout()
     plt.show()
+
+
+def edit_result(res_raw: np.ndarray):
+    r_id = len(res_raw) - 1 # recombined idx
+    recombine_time = np.where(res_raw[:, r_id] > 0.)[0]
+    if recombine_time == 0:
+        return
+
+
+

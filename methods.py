@@ -28,7 +28,6 @@ def make_group(result: np.ndarray) -> dict:
     recombined = result[:, 22]
     occupied = all_9_8 + all_12_15 + all_24_48 + all_96_384 + hetero_dloop + homo_dloop + recombined
 
-
     res: dict = {
         "time": result[:, 0],
         "free sites": result[:, 1],
@@ -155,11 +154,51 @@ def plot_trajectories(one_res):
     plt.show()
 
 
-def edit_result(res_raw: np.ndarray):
-    r_id = len(res_raw) - 1 # recombined idx
-    recombine_time = np.where(res_raw[:, r_id] > 0.)[0]
-    if recombine_time == 0:
-        return
+def plot_dlc(dlc_results: list):
+
+    n = len(dlc_results)
+    t = len(dlc_results[0][0])
+    xt = np.arange(0, t, 1)
+
+
+    #Create a 3x2 grid of subplots with more space
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(14, 12))
+
+    # Define plot settings
+    title_font = {"fontsize": 12}
+    label_font = {"fontsize": 12}
+
+    aggr_dlc = [np.zeros(t), np.zeros(t)]
+    for i in range(n):
+        aggr_dlc[0] += dlc_results[i][0]
+        aggr_dlc[1] += dlc_results[i][1]
+
+    aggr_dlc[0] /= n
+    aggr_dlc[1] /= n
+
+    if aggr_dlc[0].max() > 0:
+        #  make a convolution of the data
+        aggr_dlc[0] = np.convolve(aggr_dlc[0], np.ones(200) / 200, mode='same')
+
+
+    # Plot 0: Free Binding Sites
+    ax0 = axs[0]
+    ax0.plot(xt, aggr_dlc[0], color="blue")
+    ax0.set_title("Homologous D-loops %", **title_font)
+    ax0.set_xlabel("T", **label_font)
+    ax0.set_ylabel("N", **label_font)
+    ax0.grid(True, linestyle="--", alpha=0.6)
+
+    # Plot 1: Homologous Complexes
+    ax1 = axs[1]
+    ax1.plot(xt, aggr_dlc[1], color="red")
+    ax1.set_title("Heterologous D-loops %", **title_font)
+    ax1.set_xlabel("T", **label_font)
+    ax1.set_ylabel("N", **label_font)
+    ax1.grid(True, linestyle="--", alpha=0.6)
+
+    fig.tight_layout()
+    plt.show()
 
 
 

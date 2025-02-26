@@ -6,7 +6,7 @@ model rad51_recombination()
       kon     = 0.0001;      // Association rate constant
       koff1   = 0.001;       // Base dissociation rate for an 8-nt complex
       kext1   = 0.5;        // Triplet extension probability for homologous complexes
-      kext2   = 0.001;      // Triplet extension probability for heterologous complexes
+      kext2   = 0.01;      // Triplet extension probability for heterologous complexes
       kdloop  = 0.1;        // D-loop formation rate constant
       koff2   = 0.001;      // D-loop dissociation rate constant
       kre     = 0.01;      // Recombination rate constant
@@ -79,13 +79,13 @@ model rad51_recombination()
       R28: HM192 -> HM384; kext1 * HM192;
       
       R29: HT8  -> HT9;   kext2 * HT8;
-      R30: HT9  -> HT12;  kext2 * HT9;
-      R31: HT12 -> HT15;  kext2 * HT12;
-      R32: HT15 -> HT24;  kext2 * HT15;
-      R33: HT24 -> HT48;  kext2 * HT24;
-      R34: HT48 -> HT96;  kext2 * HT48;
-      R35: HT96 -> HT192; kext2 * HT96;  
-      R36: HT192 -> HT384; kext2 * HT192;
+      R30: HT9  -> HT12;  kext2^2 * HT9;
+      R31: HT12 -> HT15;  kext2^3 * HT12;
+      R32: HT15 -> HT24;  kext2^3 * HT15;
+      R33: HT24 -> HT48;  kext2^4 * HT24;
+      R34: HT48 -> HT96;  kext2^4 * HT48;
+      R35: HT96 -> HT192; kext2^5 * HT96;  
+      R36: HT192 -> HT384; kext2^5 * HT192;
       
       // D-loop formation reactions
       R37: HM15  -> DHM;  kdloop^6 * HM15;

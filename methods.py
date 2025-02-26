@@ -10,28 +10,27 @@ def make_group(result: np.ndarray) -> dict:
     """
     Group the results of the simulation into different categories.
     """
-    
-    homo_8_9 = result[:, 2] + result[:, 3]
-    homo_12_15 = result[:, 4] + result[:, 5]
-    homo_24_48 = result[:, 6] + result[:, 7]
-    homo_96_384 = result[:, 8] + result[:, 9] + result[:, 10]
-    hetero_8_9 = result[:, 11] + result[:, 12]
-    hetero_12_15 = result[:, 13] + result[:, 14]
-    hetero_24_48 = result[:, 15] + result[:, 16]
-    hetero_96_384 = result[:, 17] + result[:, 18] + result[:, 19]
+    homo_8_9 = result[2, :] + result[3, :]
+    homo_12_15 = result[4, :] + result[5, :]
+    homo_24_48 = result[6, :] + result[7, :]
+    homo_96_384 = result[8, :] + result[9, :] + result[10, :]
+    hetero_8_9 = result[11, :] + result[12, :]
+    hetero_12_15 = result[13, :] + result[14, :]
+    hetero_24_48 = result[15, :] + result[16, :]
+    hetero_96_384 = result[17, :] + result[18, :] + result[19, :]
     all_9_8 = hetero_8_9 + homo_8_9
     all_12_15 = hetero_12_15 + homo_12_15
     all_24_48 = hetero_24_48 + homo_24_48
     all_96_384 = hetero_96_384 + homo_96_384
-    homo_dloop = result[:, 20]
-    hetero_dloop = result[:, 21]
-    recombined = result[:, 22]
+    homo_dloop = result[20, :]
+    hetero_dloop = result[21, :]
+    recombined = result[22, :]
     occupied = all_9_8 + all_12_15 + all_24_48 + all_96_384 + hetero_dloop + homo_dloop + recombined
 
     res: dict = {
-        "time": result[:, 0],
-        "free sites": result[:, 1],
-        "occupied sites": np.sum(result[:, 2:23], axis=1),
+        "time": result[0, :],
+        "free sites": result[1, :],
+        "occupied sites": np.sum(result[2:23, :], axis=1),
         "homo 8-9 nts": homo_8_9,
         "homo 12-15 nts": homo_24_48,
         "homo 24-48 nts": homo_24_48,
@@ -154,51 +153,21 @@ def plot_trajectories(one_res):
     plt.show()
 
 
-def plot_dlc(dlc_results: list):
+def plot_dlc(dlc_results: np.ndarray, convo: int = 100):
 
-    n = len(dlc_results)
-    t = len(dlc_results[0][0])
-    xt = np.arange(0, t, 1)
+    n, t = dlc_results.shape
 
-
-    #Create a 3x2 grid of subplots with more space
-    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(14, 12))
-
-    # Define plot settings
-    title_font = {"fontsize": 12}
-    label_font = {"fontsize": 12}
-
-    aggr_dlc = [np.zeros(t), np.zeros(t)]
+    aggr_dlc = np.zeros(t)
     for i in range(n):
-        aggr_dlc[0] += dlc_results[i][0]
-        aggr_dlc[1] += dlc_results[i][1]
-
-    aggr_dlc[0] /= n
-    aggr_dlc[1] /= n
-
-    if aggr_dlc[0].max() > 0:
-        #  make a convolution of the data
-        aggr_dlc[0] = np.convolve(aggr_dlc[0], np.ones(200) / 200, mode='same')
+        aggr_dlc += dlc_results[i]
+ 
+    aggr_dlc /= n
 
 
-    # Plot 0: Free Binding Sites
-    ax0 = axs[0]
-    ax0.plot(xt, aggr_dlc[0], color="blue")
-    ax0.set_title("Homologous D-loops %", **title_font)
-    ax0.set_xlabel("T", **label_font)
-    ax0.set_ylabel("N", **label_font)
-    ax0.grid(True, linestyle="--", alpha=0.6)
+    if convo > 0:
+        aggr_dlc = np.convolve(aggr_dlc, np.ones(convo) / convo, mode='same')
 
-    # Plot 1: Homologous Complexes
-    ax1 = axs[1]
-    ax1.plot(xt, aggr_dlc[1], color="red")
-    ax1.set_title("Heterologous D-loops %", **title_font)
-    ax1.set_xlabel("T", **label_font)
-    ax1.set_ylabel("N", **label_font)
-    ax1.grid(True, linestyle="--", alpha=0.6)
-
-    fig.tight_layout()
+    xt = np.arange(0, t)
+    plt.plot(xt, aggr_dlc)
     plt.show()
-
-
 

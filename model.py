@@ -1,14 +1,14 @@
-my_model = """
+gillespie_model = """
 model rad51_recombination()
       // Parameters
-      N       = 230;        // Number of free binding sites
+      N       = 200;        // Number of free binding sites
       f       = 0.002;      // Probability of homologous association
       kon     = 0.0001;      // Association rate constant
       koff1   = 0.001;       // Base dissociation rate for an 8-nt complex
-      kext1   = 0.5;        // Triplet extension probability for homologous complexes
+      kext1   = 0.1;        // Triplet extension probability for homologous complexes
       kext2   = 0.01;      // Triplet extension probability for heterologous complexes
       kdloop  = 0.1;        // D-loop formation rate constant
-      koff2   = 0.001;      // D-loop dissociation rate constant
+      koff2   = 0.01;      // D-loop dissociation rate constant
       kre     = 0.01;      // Recombination rate constant
     
       // Species

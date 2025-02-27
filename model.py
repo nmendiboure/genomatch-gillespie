@@ -108,5 +108,4 @@ model rad51_recombination()
       R51: DHM -> R;  kre * DHM;
       R52: DHT -> R;  kre * DHT;
 end
-
 """

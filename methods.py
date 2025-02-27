@@ -2,7 +2,6 @@
 This module contains the core functions for the simulation of the DNA binding model.
 """
 
-from matplotlib.pylab import f
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm

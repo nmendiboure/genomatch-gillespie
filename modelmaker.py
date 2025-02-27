@@ -1,5 +1,6 @@
 """Model generator for the Gillespie algorithm."""
 import yaml
+import hashlib
 
 def generate_gillespie_model(config_path, intermediates, output_path):
     """
@@ -12,6 +13,9 @@ def generate_gillespie_model(config_path, intermediates, output_path):
     """
     with open(config_path, "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
+
+    data_string = "".join([str(value) for value in config.values()])
+    uid = int(hashlib.sha256(data_string.encode()).hexdigest(), 16) % 10**10
 
     # Load parameters from the YAML file
     population_size = config["N"]
@@ -42,7 +46,7 @@ def generate_gillespie_model(config_path, intermediates, output_path):
     """
 
     species_index = {}  # Dictionary to map species names to indices
-    species_index[0] = "time"
+    species_index[0] = "Time"
     species_index[1] = "S"
     index = 2
 
@@ -79,7 +83,7 @@ def generate_gillespie_model(config_path, intermediates, output_path):
         model += "\n        // Dissociation reactions (homologous)\n" if label == "HM" else "\n        // Dissociation reactions (heterologous)\n"
         for i in intermediates:
             c = min(4, sum(i > x for x in [8, 9, 12, 15]))
-            model += f"        R{reaction_id}: {label}{i} -> S; koff1 / (1.4**{c}) * {label}{i};\n"; reaction_id += 1
+            model += f"        R{reaction_id}: {label}{i} -> S; koff1 / (1.4^{c}) * {label}{i};\n"; reaction_id += 1
 
     # Extension reactions
     for label in ["HM", "HT"]:
@@ -116,7 +120,7 @@ def generate_gillespie_model(config_path, intermediates, output_path):
     with open(output_path, "w", encoding="utf-8") as file:
         file.write(model)
 
-    return model, species_index
+    return model, species_index, uid
 
 
 if __name__ == "__main__":

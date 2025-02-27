@@ -2,48 +2,68 @@
 This module contains the core functions for the simulation of the DNA binding model.
 """
 
+from matplotlib.pylab import f
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
-def make_group(result: np.ndarray) -> dict:
+def make_group(result: np.ndarray, species_to_index) -> dict:
     """
     Group the results of the simulation into different categories.
     """
-    homo_8_9 = result[2, :] + result[3, :]
-    homo_12_15 = result[4, :] + result[5, :]
-    homo_24_48 = result[6, :] + result[7, :]
-    homo_96_384 = result[8, :] + result[9, :] + result[10, :]
-    hetero_8_9 = result[11, :] + result[12, :]
-    hetero_12_15 = result[13, :] + result[14, :]
-    hetero_24_48 = result[15, :] + result[16, :]
-    hetero_96_384 = result[17, :] + result[18, :] + result[19, :]
-    all_9_8 = hetero_8_9 + homo_8_9
-    all_12_15 = hetero_12_15 + homo_12_15
-    all_24_48 = hetero_24_48 + homo_24_48
-    all_96_384 = hetero_96_384 + homo_96_384
-    homo_dloop = result[20, :]
-    hetero_dloop = result[21, :]
-    recombined = result[22, :]
-    occupied = all_9_8 + all_12_15 + all_24_48 + all_96_384 + hetero_dloop + homo_dloop + recombined
+    def sum_species(species_list):
+        res = np.zeros(result.shape[1])
+        for species in species_list:
+            res += result[species_to_index[species], :]
+        return res
+    
+    all_homo = [k for k in species_to_index if k.startswith("HM")]
+    all_hetero = [k for k in species_to_index if k.startswith("HT")]
+
+    homo_8_9 = sum_species(["HM8", "HM9"])
+    homo_12_21 = sum_species([h for h in all_homo if 12 <= int(h[2:]) <= 21])
+    homo_24_48 = sum_species([h for h in all_homo if 24 <= int(h[2:]) <= 48])
+    homo_51_144 = sum_species([h for h in all_homo if 51 <= int(h[2:]) <= 144])
+    homo_144_plus = sum_species([h for h in all_homo if  144 < int(h[2:])])
+
+    hetero_8_9 = sum_species(["HT8", "HT9"])
+    hetero_12_21 = sum_species([h for h in all_hetero if 12 <= int(h[2:]) <= 21])
+    hetero_24_48 = sum_species([h for h in all_hetero if 24 <= int(h[2:]) <= 48])
+    hetero_51_144 = sum_species([h for h in all_hetero if 51 <= int(h[2:]) <= 144])
+    hetero_144_plus = sum_species([h for h in all_hetero if  144 < int(h[2:])])
+
+    all_8_9 = homo_8_9 + hetero_8_9
+    all_12_21 = homo_12_21 + hetero_12_21
+    all_24_48 = homo_24_48 + hetero_24_48
+    all_51_144 = homo_51_144 + hetero_51_144
+    all_144_plus = homo_144_plus + hetero_144_plus
+
+    homo_dloop = result[species_to_index["DHM"], :]
+    hetero_dloop = result[species_to_index["DHT"], :]
+    recombined = result[species_to_index["R"], :]
+
+    occupied = all_8_9 + all_12_21 + all_24_48 + all_51_144 + all_144_plus + homo_dloop + hetero_dloop + recombined
 
     res: dict = {
         "time": result[0, :],
         "free sites": result[1, :],
         "occupied sites": np.sum(result[2:23, :], axis=1),
         "homo 8-9 nts": homo_8_9,
-        "homo 12-15 nts": homo_24_48,
+        "homo 12-21 nts": homo_12_21,
         "homo 24-48 nts": homo_24_48,
-        "homo 96-384 nts": homo_96_384, 
+        "homo 51-144 nts": homo_51_144,
+        "homo 144+ nts": homo_144_plus, 
         "hetero 8-9 nts": hetero_8_9,
-        "hetero 12-15 nts": hetero_12_15,
+        "hetero 12-21 nts": hetero_12_21,
         "hetero 24-48 nts": hetero_24_48,
-        "hetero 96-384 nts": hetero_96_384,
+        "hetero 51-144 nts": hetero_51_144,
+        "hetero 144+ nts": hetero_144_plus,
         "all": occupied,
-        "all associations 8-9 nts": all_9_8,
-        "all associations 12-15 nts": all_12_15,
+        "all associations 8-9 nts": all_8_9,
+        "all associations 12-21 nts": all_12_21,
         "all associations 24-48 nts": all_24_48,
-        "all associations 96-384 nts": all_96_384,
+        "all associations 51-144 nts": all_51_144,
+        "all associations 144+ nts": all_144_plus,
         "D-loop homologies": homo_dloop,
         "D-loop heterologies": hetero_dloop,
         "Recombined": recombined
@@ -69,7 +89,7 @@ def aggregate_groups(groups: list[dict]):
 
 
 
-def plot_trajectories(one_res):
+def plot_trajectories(one_res, outpath="", show=False):
     """
     Plot the trajectories of the different molecules in the model.
     """
@@ -150,11 +170,17 @@ def plot_trajectories(one_res):
     ax5.legend(prop=legend_font)
 
     fig.tight_layout()
-    plt.show()
+
+    if show:
+        plt.show()
+    
+    if outpath != "":
+        plt.savefig(outpath, format="png")
+
+    plt.close(fig)
 
 
-def plot_dlc(dlc_results: np.ndarray, convo: int = 100):
-
+def plot_dlc(dlc_results: np.ndarray, convo: int = 100, outpath="", show=False):
     n, t = dlc_results.shape
 
     aggr_dlc = np.zeros(t)
@@ -168,6 +194,14 @@ def plot_dlc(dlc_results: np.ndarray, convo: int = 100):
         aggr_dlc = np.convolve(aggr_dlc, np.ones(convo) / convo, mode='same')
 
     xt = np.arange(0, t)
-    plt.plot(xt, aggr_dlc)
-    plt.show()
+    fig, ax = plt.subplots()
+    xt = np.arange(t)
+    ax.plot(xt, aggr_dlc)
 
+    if show:
+        plt.show()
+
+    if outpath:
+        fig.savefig(outpath, format="png")
+
+    plt.close(fig)

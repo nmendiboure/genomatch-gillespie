@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=74.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genomatch-gillespie"
+version = "1.0.0rc0"
+description = "Stochastic and comprehensive framework to study homology search in DNA repair using Gillespie algorithm"
+dynamic = ["dependencies"]
+readme = "README.md"
+license = {text = "GPLv3"}
+authors = [
+    {name = "Nicolas Mendiboure", email = "nicolas.mendiboure@ens-lyon.fr"}
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: System-Biology",
+    "Operating System :: Unix",
+    "Operating System :: MacOS"
+]
+requires-python = "~=3.12"
+
+[project.urls]
+Homepage = "https://github.com/nmendiboure/genomatch-gillespie"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+genomatchgp = "genomatchgp.main:main"
+
+[tool.setuptools.dynamic]
+dependencies = {file = "requirements.txt"}

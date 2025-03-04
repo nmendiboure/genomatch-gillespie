@@ -1,23 +1,15 @@
 """Model generator for the Gillespie algorithm."""
 
-import yaml
 import hashlib
 
 
-def generate_gillespie_model(config_path, intermediates, output_path):
+def generate_gillespie_model(config):
     """
     Generates a Gillespie model based on a YAML configuration file.
-
-    :param config_path: Path to the YAML file containing model parameters
-    :param intermediates: List of intermediate complexes
-    :param output_path: Path to save the generated model file
-    :return: Tuple (model string, species_index dictionary)
     """
-    with open(config_path, "r", encoding="utf-8") as file:
-        config = yaml.safe_load(file)
-
+    
     data_string = "".join([str(value) for value in config.values()])
-    uid = int(hashlib.sha256(data_string.encode()).hexdigest(), 16) % 10**10
+    uid = int(hashlib.sha256(data_string.encode()).hexdigest(), 16) % 2**32
 
     # Load parameters from the YAML file
     population_size = config["N"]
@@ -51,6 +43,9 @@ def generate_gillespie_model(config_path, intermediates, output_path):
     species_index[0] = "Time"
     species_index[1] = "S"
     index = 2
+
+
+    intermediates = config["intermediates"]
 
     # Declare homologous and heterologous complexes
     for label in ["HM", "HT"]:
@@ -144,20 +139,4 @@ def generate_gillespie_model(config_path, intermediates, output_path):
     reaction_id += 1
     model += f"        R{reaction_id}: DHT -> R; kre * DHT;\n    end\n"
 
-    with open(output_path, "w", encoding="utf-8") as file:
-        file.write(model)
-
     return model, species_index, uid
-
-
-if __name__ == "__main__":
-    intermediate_complexes = (
-        [8] + [i for i in range(9, 51, 3)] + [96, 144, 192, 240, 384]
-    )
-    path = "params.yaml"
-    model_str, species_mapping = generate_gillespie_model(
-        path, intermediate_complexes, "model.txt"
-    )
-
-    print("Species index mapping:")
-    print(species_mapping)

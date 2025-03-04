@@ -177,8 +177,5 @@ cython_debug/
 .idea/inspectionProfiles/profiles_settings.xml
 
 # output files
-output/
 output/*
-output/*/*
-output/*/*/*
-model.txt
+data/*

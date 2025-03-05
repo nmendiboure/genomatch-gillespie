@@ -97,7 +97,7 @@ def generate_gillespie_model(config):
             else "\n        // Extension reactions (heterologous)\n"
         )
         for idx in range(len(intermediates) - 1):
-            rate = "kext * ktol" if label == "HT" else "kext"
+            rate = "kext * ktol * S / N" if label == "HT" else "kext * S / N"
             model += f"        R{reaction_id}: {label}{intermediates[idx]} -> {label}{intermediates[idx+1]}; {rate} * {label}{intermediates[idx]};\n"
             reaction_id += 1
 

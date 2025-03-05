@@ -59,13 +59,14 @@ def run(
     s_delay = r.simulate(start, end, n_points_delay)
 
     # synthesis step
-    r.S = params["N"]
+    n = params["N"]
+    r.S = n
     start, end = timepoints_dyn[0], timepoints_dyn[-1]
     s_dyn = r.simulate(start, end, n_points_dyn)
 
     s_total = np.zeros((n_species, n_points))
     s_total[0, :] = np.arange(0, n_timepoints, every)
-    s_total[1, :] = np.concatenate(([200] * n_points_delay, s_dyn[:, 1]))
+    s_total[1, :] = np.concatenate(([n] * n_points_delay, s_dyn[:, 1]))
 
     for i in range(2, n_species):
         s_total[i, :] = np.concatenate((s_delay[:, i], s_dyn[:, i]))

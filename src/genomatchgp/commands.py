@@ -65,14 +65,14 @@ class Run(AbstractCommand):
 
         with open(yaml_path, "r", encoding="utf-8") as file:
             data_yaml = yaml.safe_load(file)
-
-        n_timepoints = data_yaml["timepoints"]
-        n_points = n_timepoints // data_yaml["every"]
         
         if RANK == 0:
             my_model, index_to_species, model_uid = generate_gillespie_model(data_yaml)
             outdir = os.path.join(outdir, str(model_uid))
             os.makedirs(outdir, exist_ok=True)
+            with open(join(outdir, "model.txt"), "w", encoding="utf-8") as file:
+                file.write(my_model)
+                
             shutil.copy2(yaml_path, os.path.join(outdir, "params.yaml"))
             species_to_index = {v: k for k, v in index_to_species.items()}
         else:

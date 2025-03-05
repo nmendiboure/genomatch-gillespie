@@ -45,7 +45,7 @@ def make_group(result: np.ndarray, species_to_index) -> dict:
 
     dmh_idx = species_to_index["DHM"]
     recomb_idx = species_to_index["R"]
-    dlc_homologous = result[dmh_idx, :]
+    dlc_homologous = result[dmh_idx, :].copy()
 
     if result[recomb_idx, :][-1] != 0:
         recomb_time = np.where(result[recomb_idx, :] > 0.0)[0][0]

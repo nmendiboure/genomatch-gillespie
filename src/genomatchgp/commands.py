@@ -5,6 +5,7 @@ import shutil
 from os.path import join
 from docopt import docopt
 
+from matplotlib.pyplot import plot
 import yaml
 import numpy as np
 from mpi4py import MPI
@@ -92,28 +93,29 @@ class Run(AbstractCommand):
         start_idx = RANK * sims_per_rank
         end_idx = (RANK + 1) * sims_per_rank if RANK != SIZE - 1 else n_cells
         
-        local_results_group = []
-        local_results_dlc_homologous = np.zeros((end_idx - start_idx, n_points))
-        
+        records_dir = join(outdir, "records")
+        plots_dir = join(outdir, "plots")
+        os.makedirs(records_dir, exist_ok=True)
+        os.makedirs(plots_dir, exist_ok=True)
         for s in range(start_idx, end_idx):
-            result_group, dlc_homologous = run(s, model_uid, species_to_index, my_model, data_yaml)
-            local_results_group.append(result_group)
-            local_results_dlc_homologous[s - start_idx, :] = dlc_homologous
-        
-        all_results_group = COMM.gather(local_results_group, root=0)
-        all_results_dlc_homologous = COMM.gather(local_results_dlc_homologous, root=0)
-        
+            run(s, model_uid, species_to_index, my_model, data_yaml, records_dir)
+
+        COMM.Barrier()
+
         if RANK == 0:
-            results_group = [item for sublist in all_results_group for item in sublist]
-            results_dlc_homologous = np.vstack(all_results_dlc_homologous)
-            
-            agg_result_groups = methods.aggregate_groups(results_group)
-            methods.plot_trajectories(agg_result_groups, os.path.join(outdir, "Aggregated_trajectories.png"))
+            all_results = []
+            for s in range(n_cells):
+                npz = np.load(join(records_dir, f"simulation_{s}.npz"))
+                all_results.append({f : npz[f] for f in npz.files})
+ 
+
+            agg_result_groups = methods.aggregate_groups(all_results)
+            methods.plot_trajectories(agg_result_groups, os.path.join(plots_dir, "aggregated_trajectories.png"))
             
             convo_dlc = [0, 100, 200, 500, 1000]
             for c in convo_dlc:
                 methods.plot_dlc(
-                    results_dlc_homologous,
+                    agg_result_groups["DLC homologous"],
                     c,
-                    os.path.join(outdir, f"Aggregated_homologous_DLC_convo{c}.png"),
+                    os.path.join(plots_dir, f"aggregated_homologous_DLC_convo{c}.png"),
                 )

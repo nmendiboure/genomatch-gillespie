@@ -14,7 +14,7 @@
             "args": [
                 "run",
                 "params.yaml",
-                "-c", "1000",
+                "-c", "10",
                 "-o", "data/outputs",
             ]
         }

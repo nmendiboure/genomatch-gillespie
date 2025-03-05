@@ -43,6 +43,14 @@ def make_group(result: np.ndarray, species_to_index) -> dict:
 
     occupied = all_8_9 + all_12_21 + all_24_48 + all_51_144 + all_144_plus + homo_dloop + hetero_dloop + recombined
 
+    dmh_idx = species_to_index["DHM"]
+    recomb_idx = species_to_index["R"]
+    dlc_homologous = result[dmh_idx, :]
+
+    if result[recomb_idx, :][-1] != 0:
+        recomb_time = np.where(result[recomb_idx, :] > 0.0)[0][0]
+        dlc_homologous[recomb_time + 1 :] = 0
+
     res: dict = {
         "time": result[0, :],
         "free sites": result[1, :],
@@ -65,6 +73,7 @@ def make_group(result: np.ndarray, species_to_index) -> dict:
         "all associations 144+ nts": all_144_plus,
         "D-loop homologies": homo_dloop,
         "D-loop heterologies": hetero_dloop,
+        "DLC homologous": dlc_homologous,
         "Recombined": recombined
     }
 
@@ -179,16 +188,8 @@ def plot_trajectories(one_res, outpath="", show=False):
     plt.close(fig)
 
 
-def plot_dlc(dlc_results: np.ndarray, convo: int = 100, outpath="", show=False):
-    n, t = dlc_results.shape
-
-    aggr_dlc = np.zeros(t)
-    for i in range(n):
-        aggr_dlc += dlc_results[i]
- 
-    aggr_dlc /= n
-
-
+def plot_dlc(aggr_dlc: np.ndarray, convo: int = 100, outpath="", show=False):
+    t = aggr_dlc.shape[0]
     if convo > 0:
         aggr_dlc = np.convolve(aggr_dlc, np.ones(convo) / convo, mode='same')
 

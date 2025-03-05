@@ -16,6 +16,7 @@ def run(
     species_to_index: dict,
     my_model: str,
     params: dict,
+    outdir: str,
 ):
     """
     Run a single simulation.
@@ -69,14 +70,9 @@ def run(
     for i in range(2, n_species):
         s_total[i, :] = np.concatenate((s_delay[:, i], s_dyn[:, i]))
 
-    dmh_idx = species_to_index["DHM"]
-    recomb_idx = species_to_index["R"]
-    results_dlc_homologous = s_total[dmh_idx, :]
-
-    if s_total[recomb_idx, :][-1] != 0:
-        recomb_time = np.where(s_total[recomb_idx, :] > 0.0)[0][0]
-        results_dlc_homologous[recomb_time + 1 :] = 0
-
     result_group = methods.make_group(s_total, species_to_index)
 
-    return result_group, results_dlc_homologous
+    np.savez_compressed(
+        f"{outdir}/simulation_{uid}.npz",
+        **result_group,
+    )

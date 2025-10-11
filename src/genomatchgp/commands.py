@@ -3,17 +3,15 @@
 import os
 import shutil
 from os.path import join
-from docopt import docopt
 
-from matplotlib.pyplot import plot
-import yaml
 import numpy as np
+import yaml
+from docopt import docopt
 from mpi4py import MPI
 
 from genomatchgp import methods
 from genomatchgp.modelmaker import generate_gillespie_model
 from genomatchgp.simulation import run
-
 
 COMM = MPI.COMM_WORLD
 RANK = COMM.Get_rank()
@@ -50,8 +48,8 @@ class Run(AbstractCommand):
         <parameters>  Path to the parameters .yaml file
 
     Options:
-        -c CELLS , --cells CELLS            Number of cells (replicates)
-        -o CELLS , --output OUTPUT          Output directory
+        -c CELLS, --cells CELLS            Number of cells (replicates)
+        -o OUTPUT, --output OUTPUT          Output directory
     """
 
     def execute(self):
@@ -79,13 +77,11 @@ class Run(AbstractCommand):
             my_model = None
             model_uid = None
             species_to_index = None
-            index_to_species = None
             outdir = None
         
         my_model = COMM.bcast(my_model, root=0)
         model_uid = COMM.bcast(model_uid, root=0)
         species_to_index = COMM.bcast(species_to_index, root=0)
-        index_to_species = COMM.bcast(index_to_species, root=0)
         outdir = COMM.bcast(outdir, root=0)
 
 
@@ -112,7 +108,7 @@ class Run(AbstractCommand):
             agg_result_groups = methods.aggregate_groups(all_results)
             methods.plot_trajectories(agg_result_groups, os.path.join(plots_dir, "aggregated_trajectories.png"))
             
-            convo_dlc = [0, 100, 200, 500, 1000]
+            convo_dlc = [0, 100, 200]
             for c in convo_dlc:
                 methods.plot_dlc(
                     agg_result_groups["DLC homologous"],

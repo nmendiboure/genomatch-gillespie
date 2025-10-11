@@ -16,6 +16,7 @@ def generate_gillespie_model(config):
     homologous_fraction = config["f"]
     kon = config["kon"]
     koff1 = config["koff1"]
+    koff1_r = config["koff1_factor"]
     kext = config["kext"]
     ktol = config["ktol"]
     kdloop = config["kdloop"]
@@ -86,7 +87,7 @@ def generate_gillespie_model(config):
         )
         for i in intermediates:
             c = min(4, sum(i > x for x in [8, 9, 12, 15]))
-            model += f"        R{reaction_id}: {label}{i} -> S; koff1 / (1.4^{c}) * {label}{i};\n"
+            model += f"        R{reaction_id}: {label}{i} -> S; koff1 / ({koff1_r}^{c}) * {label}{i};\n"
             reaction_id += 1
 
     # Extension reactions

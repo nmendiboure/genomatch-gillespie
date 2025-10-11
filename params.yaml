@@ -1,17 +1,18 @@
 N: 200
 f: 0.002
-kon: 0.002
+kon: 0.02
 kext: 0.5
-ktol: 0.015
-koff1: 0.02
-koff2: 0.01
+ktol: 0.02
+koff1: 0.05
+koff1_factor: 1.2
+koff2: 0.002
 kdloop: 0.01
 kre: 0.001
 seed_zero: 1999
-timepoints: 100000
+timepoints: 12000
 every: 10
 gamma_k: 4
-gamma_theta: 6200
+gamma_theta: 400
 intermediates: 
     - 8
     - 9

@@ -1,167 +1,193 @@
 """
-This module contains the core functions for the simulation of the DNA binding model.
+Aggregation and plotting utilities for the Gillespie trajectories.
+
+Buckets are derived from the YAML `intermediates` list rather than
+hardcoded, so the aggregation stays consistent with whatever bucket
+discretization the model was generated with.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
-def make_group(result: np.ndarray, species_to_index) -> dict:
+
+# =====================================================================
+# Bucket boundaries used for aggregation plots.
+# Each tuple is (label, L_lo, L_hi) inclusive on both sides.
+# Edit here if you want to change how complexes are grouped on plots;
+# this is independent of the modelmaker discretization.
+# =====================================================================
+LENGTH_BUCKETS: tuple[tuple[str, int, int], ...] = (
+    ("8-9",   8,   9),
+    ("12-21", 12,  21),
+    ("24-30", 24,  30),
+    ("45-95", 45,  95),
+    ("140+",  140, 10**6),
+)
+
+
+# =====================================================================
+# Aggregation
+# =====================================================================
+
+def make_group(
+        result: np.ndarray,
+        species_to_index: dict,
+        intermediates: list[int],
+) -> dict:
     """
-    Group the results of the simulation into different categories.
+    Convert a raw species-by-time matrix into a labeled dict of
+    aggregated trajectories ready for plotting / saving.
+
+    Parameters
+    ----------
+    result : (n_species, n_points) array
+        Output of `simulation.run()`. Row 0 is time, row 1 is S, the
+        rest follows the species declaration order.
+    species_to_index : dict[str, int]
+        Inverse mapping built in commands.py from `index_to_species`.
+    intermediates : list[int]
+        Length buckets used by the modelmaker.
     """
-    def sum_species(species_list):
-        res = np.zeros(result.shape[1])
-        for species in species_list:
-            res += result[species_to_index[species], :]
-        return res
-    
-    all_homo = [k for k in species_to_index if k.startswith("HM")]
-    all_hetero = [k for k in species_to_index if k.startswith("HT")]
 
-    homo_8_9 = sum_species(["HM8", "HM9"])
-    homo_12_21 = sum_species([h for h in all_homo if 12 <= int(h[2:]) <= 21])
-    homo_24_48 = sum_species([h for h in all_homo if 24 <= int(h[2:]) <= 48])
-    homo_51_144 = sum_species([h for h in all_homo if 51 <= int(h[2:]) <= 144])
-    homo_144_plus = sum_species([h for h in all_homo if  144 < int(h[2:])])
+    n_pts = result.shape[1]
 
-    hetero_8_9 = sum_species(["HT8", "HT9"])
-    hetero_12_21 = sum_species([h for h in all_hetero if 12 <= int(h[2:]) <= 21])
-    hetero_24_48 = sum_species([h for h in all_hetero if 24 <= int(h[2:]) <= 48])
-    hetero_51_144 = sum_species([h for h in all_hetero if 51 <= int(h[2:]) <= 144])
-    hetero_144_plus = sum_species([h for h in all_hetero if  144 < int(h[2:])])
+    def sum_species(names: list[str]) -> np.ndarray:
+        """Row-sum a group of species; missing names are ignored."""
+        idxs = [species_to_index[n] for n in names if n in species_to_index]
+        if not idxs:
+            return np.zeros(n_pts, dtype=np.float64)
+        return result[idxs, :].sum(axis=0)
 
-    all_8_9 = homo_8_9 + hetero_8_9
-    all_12_21 = homo_12_21 + hetero_12_21
-    all_24_48 = homo_24_48 + hetero_24_48
-    all_51_144 = homo_51_144 + hetero_51_144
-    all_144_plus = homo_144_plus + hetero_144_plus
-
-    homo_dloop = result[species_to_index["DHM"], :]
-    hetero_dloop = result[species_to_index["DHT"], :]
-    recombined = result[species_to_index["R"], :]
-
-    occupied = all_8_9 + all_12_21 + all_24_48 + all_51_144 + all_144_plus + homo_dloop + hetero_dloop + recombined
-
-    dmh_idx = species_to_index["DHM"]
-    recomb_idx = species_to_index["R"]
-    dlc_homologous = result[dmh_idx, :].copy()
-
-    if result[recomb_idx, :][-1] != 0:
-        recomb_time = np.where(result[recomb_idx, :] > 0.0)[0][0]
-        dlc_homologous[recomb_time + 1 :] = 0
-
+    # ------------------------------------------------------------------
+    # Pull the canonical row indices
+    # ------------------------------------------------------------------
     res: dict = {
-        "time": result[0, :],
-        "free sites": result[1, :],
-        "occupied sites": np.sum(result[2:23, :], axis=1),
-        "homo 8-9 nts": homo_8_9,
-        "homo 12-21 nts": homo_12_21,
-        "homo 24-48 nts": homo_24_48,
-        "homo 51-144 nts": homo_51_144,
-        "homo 144+ nts": homo_144_plus, 
-        "hetero 8-9 nts": hetero_8_9,
-        "hetero 12-21 nts": hetero_12_21,
-        "hetero 24-48 nts": hetero_24_48,
-        "hetero 51-144 nts": hetero_51_144,
-        "hetero 144+ nts": hetero_144_plus,
-        "all": occupied,
-        "all associations 8-9 nts": all_8_9,
-        "all associations 12-21 nts": all_12_21,
-        "all associations 24-48 nts": all_24_48,
-        "all associations 51-144 nts": all_51_144,
-        "all associations 144+ nts": all_144_plus,
-        "D-loop homologies": homo_dloop,
-        "D-loop heterologies": hetero_dloop,
-        "DLC homologous": dlc_homologous,
-        "Recombined": recombined
+        "time":       result[species_to_index["Time"], :],
+        "free sites": result[species_to_index["S"], :],
+        "Recombined": result[species_to_index["R"], :],
     }
+
+    # ------------------------------------------------------------------
+    # Bucketed totals (for the multi-panel trajectory plot)
+    # ------------------------------------------------------------------
+    for label, lo, hi in LENGTH_BUCKETS:
+        in_bucket = [L for L in intermediates if lo <= L <= hi]
+        hm_names  = [f"HM{L}" for L in in_bucket]
+        ht_names  = [f"HT{L}" for L in in_bucket]
+        homo   = sum_species(hm_names)
+        hetero = sum_species(ht_names)
+        res[f"homo {label} nts"]              = homo
+        res[f"hetero {label} nts"]            = hetero
+        res[f"all associations {label} nts"]  = homo + hetero
+
+    # ------------------------------------------------------------------
+    # D-loops — total and per-length (size-resolved)
+    # ------------------------------------------------------------------
+    dhm_names = [f"DHM{L}" for L in intermediates]
+    dht_names = [f"DHT{L}" for L in intermediates]
+    res["D-loop homologies"]   = sum_species(dhm_names)
+    res["D-loop heterologies"] = sum_species(dht_names)
+
+    for L in intermediates:
+        res[f"DHM_L{L}"] = result[species_to_index[f"DHM{L}"], :]
+        res[f"DHT_L{L}"] = result[species_to_index[f"DHT{L}"], :]
+
+    # ------------------------------------------------------------------
+    # DLC homologous: D-loop trajectory clipped at the first
+    # recombination event. After recombination the DSB is "consumed"
+    # so any remaining DHM signal would be a tracking artefact.
+    # ------------------------------------------------------------------
+    dlc = res["D-loop homologies"].copy()
+    rec = res["Recombined"]
+    if rec[-1] > 0:
+        t_rec = int(np.argmax(rec > 0))
+        dlc[t_rec + 1:] = 0
+    res["DLC homologous"] = dlc
+
+    # ------------------------------------------------------------------
+    # Total occupancy (everything that's not free S)
+    # ------------------------------------------------------------------
+    all_complex_names = (
+        [f"HM{L}"  for L in intermediates] +
+        [f"HT{L}"  for L in intermediates] +
+        dhm_names + dht_names
+    )
+    res["all"] = sum_species(all_complex_names) + res["Recombined"]
 
     return res
 
 
-def aggregate_groups(groups: list[dict]):
+def aggregate_groups(groups: list[dict]) -> dict:
+    """Element-wise mean across replicates."""
     n = len(groups)
-    sum_groups: dict = {}
+    if n == 0:
+        return {}
 
-    for i in range(n):
-        group = groups[i]
-        for k, v in group.items():
-            if k not in sum_groups:
-                sum_groups[k] = v
+    acc: dict = {}
+    for g in groups:
+        for k, v in g.items():
+            if k not in acc:
+                acc[k] = v.astype(np.float64).copy()
             else:
-                sum_groups[k] += v
-    
-    agg_groups = {k: v / n for k, v in sum_groups.items()}
-    return agg_groups
+                acc[k] += v
+    return {k: v / n for k, v in acc.items()}
 
 
+# =====================================================================
+# Plotting
+# =====================================================================
 
-def plot_trajectories(one_res, outpath="", show=False):
-    """
-    Plot the trajectories of the different molecules in the model.
-    """
+def plot_trajectories(one_res: dict, outpath: str = "", show: bool = False) -> None:
+    """3x2 grid of trajectory panels."""
 
     t = one_res["time"]
 
-    #Create a 3x2 grid of subplots with more space
     fig, axs = plt.subplots(nrows=3, ncols=2, figsize=(14, 12), constrained_layout=True)
-
-    # Define plot settings
-    title_font = {"fontsize": 12}
-    label_font = {"fontsize": 12}
+    title_font  = {"fontsize": 12}
+    label_font  = {"fontsize": 12}
     legend_font = fm.FontProperties(size=8)
 
-    # Plot 0: Free Binding Sites
+    # ---- Panel 0: free vs occupied ----
     ax0 = axs[0, 0]
-    ax0.plot(t, one_res["free sites"], color="blue", label="S (Free Sites)")
-    ax0.plot(t, one_res["all"], color="red", label="Total Occupancy")
-    ax0.set_title("Filament Binding Dynamics", **title_font)
+    ax0.plot(t, one_res["free sites"], color="blue", label="S (free sites)")
+    ax0.plot(t, one_res["all"],        color="red",  label="Total occupancy")
+    ax0.set_title("Filament binding dynamics", **title_font)
     ax0.set_xlabel("T", **label_font)
     ax0.set_ylabel("N", **label_font)
     ax0.legend(prop=legend_font)
     ax0.grid(True, linestyle="--", alpha=0.6)
 
-    # Plot 1: Homologous Complexes
+    # ---- Panel 1: homologous complexes per bucket ----
     ax1 = axs[0, 1]
     ax1.set_title("Homologous pre-synaptic complexes", **title_font)
-    ax1.set_xlabel("T", **label_font)
-    ax1.set_ylabel("N", **label_font)
-    ax1.grid(True, linestyle="--", alpha=0.6)
 
-    # Plot 2: Heterologous Complexes
+    # ---- Panel 2: heterologous complexes per bucket ----
     ax2 = axs[1, 0]
     ax2.set_title("Heterologous pre-synaptic complexes", **title_font)
-    ax2.set_xlabel("T", **label_font)
-    ax2.set_ylabel("N", **label_font)
-    ax2.grid(True, linestyle="--", alpha=0.6)
 
-    # Plot 3: Total Associations by Binding Length
+    # ---- Panel 3: total complexes per bucket ----
     ax3 = axs[1, 1]
     ax3.set_title("All pre-synaptic complexes", **title_font)
-    ax3.set_xlabel("T", **label_font)
-    ax3.set_ylabel("N", **label_font)
-    ax3.grid(True, linestyle="--", alpha=0.6)
 
-    # Plot 4: D-loop Species
+    # ---- Panel 4: D-loops ----
     ax4 = axs[2, 0]
-    ax4.set_title("D-loop", **title_font)
-    ax4.set_xlabel("Time", **label_font)
-    ax4.set_ylabel("N", **label_font)
-    ax4.grid(True, linestyle="--", alpha=0.6)
+    ax4.set_title("D-loops", **title_font)
 
-    # Plot 5: Recombined State
+    # ---- Panel 5: recombined ----
     ax5 = axs[2, 1]
-    ax5.set_title("Recombined State", **title_font)
-    ax5.set_xlabel("Time", **label_font)
-    ax5.set_ylabel("N", **label_font)
-    ax5.grid(True, linestyle="--", alpha=0.6)
+    ax5.set_title("Recombined state", **title_font)
 
-    # Loop through the data and add to appropriate subplot
+    for ax in (ax1, ax2, ax3, ax4, ax5):
+        ax.set_xlabel("T", **label_font)
+        ax.set_ylabel("N", **label_font)
+        ax.grid(True, linestyle="--", alpha=0.6)
+
+    # Route series to their panels by key prefix
     for k, v in one_res.items():
-        if k.startswith("homo"):
+        if k.startswith("homo "):
             ax1.plot(t, v, label=k)
-        elif k.startswith("hetero"):
+        elif k.startswith("hetero "):
             ax2.plot(t, v, label=k)
         elif k.startswith("all associations"):
             ax3.plot(t, v, label=k)
@@ -170,38 +196,32 @@ def plot_trajectories(one_res, outpath="", show=False):
         elif k.startswith("Recombined"):
             ax5.plot(t, v, label=k)
 
-    # Add legends
-    ax1.legend(prop=legend_font)
-    ax2.legend(prop=legend_font)
-    ax3.legend(prop=legend_font)
-    ax4.legend(prop=legend_font)
-    ax5.legend(prop=legend_font)
-
-    fig.tight_layout()
+    for ax in (ax1, ax2, ax3, ax4, ax5):
+        ax.legend(prop=legend_font)
 
     if show:
         plt.show()
-    
-    if outpath != "":
-        plt.savefig(outpath, format="png")
-
+    if outpath:
+        fig.savefig(outpath, format="png")
     plt.close(fig)
 
 
-def plot_dlc(aggr_dlc: np.ndarray, convo: int = 100, outpath="", show=False):
+def plot_dlc(aggr_dlc: np.ndarray, convo: int = 100, outpath: str = "", show: bool = False) -> None:
+    """Plot the aggregated DLC homologous trace, optionally smoothed."""
+
     t = aggr_dlc.shape[0]
     if convo > 0:
-        aggr_dlc = np.convolve(aggr_dlc, np.ones(convo) / convo, mode='same')
+        aggr_dlc = np.convolve(aggr_dlc, np.ones(convo) / convo, mode="same")
 
-    xt = np.arange(0, t)
-    fig, ax = plt.subplots()
     xt = np.arange(t)
+    fig, ax = plt.subplots()
     ax.plot(xt, aggr_dlc)
+    ax.set_xlabel("T")
+    ax.set_ylabel("DLC homologous (avg)")
+    ax.grid(True, linestyle="--", alpha=0.6)
 
     if show:
         plt.show()
-
     if outpath:
         fig.savefig(outpath, format="png")
-
     plt.close(fig)

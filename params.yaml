@@ -1,38 +1,77 @@
-N: 200
-f: 0.002
+# =====================================================================
+# Population
+# =====================================================================
+N: 200                  # number of microhomology slots on the filament
+f: 0.002                # fraction of association events landing on a homologous donor
+
+# Bucket discretization of fragment length L (nt).
+# Dense in the kinetically critical low-L region, coarse in the saturated
+# high-L tail. Length count = 12.
+intermediates: [8, 9, 12, 15, 21, 24, 30, 45, 65, 95, 140, 200]
+
+
+# =====================================================================
+# Kinetics
+# =====================================================================
+
+# ---- Association ----
 kon: 0.04
-kext: 0.4
-ktol: 0.01
+
+
+# ---- Dissociation: continuous exponential decay in length ----
+# Replaces the historical plateau koff1 / koff1_factor^min(c, 4) by:
+#     k_off1(L) = max(koff1 * exp(-koff1_alpha * (L - koff1_lref)), koff1_floor)
+# koff1_alpha = ln(1.3)/3 ~ 0.087 reproduces the per-triplet decay of the
+# original koff1_factor=1.3 table without the artificial plateau.
 koff1: 0.04
-koff1_factor: 1.3
-koff2: 0.0004
-kdloop: 0.01
-kre: 0.008
-seed_zero: 1_999
-timepoints: 1_0000
-every: 10
-gamma_k: 9
+koff1_alpha: 0.087
+koff1_floor: 0.001
+koff1_lref:  8
+
+
+# ---- Extension: per-nt rate, rescaled to bucket spacing ----
+# Bucket-to-bucket transition rate is kext / (L_{i+1} - L_i), so kext is
+# now interpretable as "nt extended per unit time" rather than "events
+# per bucket transition". HT extension is gated by a mismatch tolerance.
+kext:    0.4
+eps_mm:  0.01
+
+
+# ---- D-loop formation: thresholded sigmoid in fragment length ----
+#     p_dloop(L) = 0                              if L < dloop_lmin
+#                = 1 / (1 + exp(-(L - L_half)/w)) otherwise
+# Replaces the former 5-tier escalator. Calibrate L_half / w against
+# genomatch original D-loop size distributions.
+kdloop:        0.001
+dloop_lmin:    21
+dloop_l_half:  50
+dloop_w:       10
+
+
+# ---- D-loop disruption: inverse-length stabilization (genomatch-faithful) ----
+#     k_off2(L) = koff2 * min(1, koff2_lref / L)
+# This dependence is *lost* in the previous Gillespie (DHM scalar). We
+# restore it by tracking D-loops per length bucket (DHM_L, DHT_L).
+koff2:       4.0e-4
+koff2_lref:  21
+
+
+# ---- Recombination ----
+kre: 0.004
+
+
+# =====================================================================
+# Resection delay (Gamma)
+# =====================================================================
+# Sampled per cell. During the delay, no chemistry happens: the solver
+# is *not* invoked, we only emit a flat S=N segment in the trajectory.
+gamma_k:     9
 gamma_theta: 105
-intermediates: 
-    - 8
-    - 9
-    - 12
-    - 15
-    - 18
-    - 21
-    - 24
-    - 36
-    - 48
-    - 54
-    - 60
-    - 66
-    - 72
-    - 78
-    - 84
-    - 96
-    - 108
-    - 120
-    - 132
-    - 144
-    - 168
-    - 192
+
+
+# =====================================================================
+# Simulation
+# =====================================================================
+seed_zero:   1999
+timepoints:  10_000
+every:       10
